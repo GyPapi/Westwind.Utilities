@@ -35,6 +35,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 //using System.Runtime.InteropServices;
 using System.Text;
 
@@ -92,10 +93,11 @@ namespace Westwind.Utilities
 	        return new StreamReader(srcFile, enc);
 	    }
 
-	    #endregion
+        #endregion
 
 
         #region Path Segments and Path Names
+
 
         /// <summary>
         /// This function returns the actual filename of a file
@@ -113,38 +115,52 @@ namespace Westwind.Utilities
 	    {
 	        try
 	        {
-	            StringBuilder sb = new StringBuilder(1500);
-	            uint result = GetLongPathName(filename, sb, sb.Capacity);
-	            if (result > 0)
-	                filename = sb.ToString();
+	            return new FileInfo(filename).FullName;                
 	        }
             catch { }
 
             return filename;
         }
 
-	    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-	    static extern uint GetLongPathName(string ShortPath, StringBuilder sb, int buffer);
-
-
-	    /// <summary>
-	    /// Returns a compact path with elipsis from a long path
-	    /// </summary>
-	    /// <param name="path">Original path to potentially trim</param>
-	    /// <param name="length">Max length of the path string returned</param>
-	    /// <returns></returns>
-	    public static string GetCompactPath(string path, int length = 70)
+        /// <summary>
+        /// Returns a compact path with elipsis from a long path
+        /// </summary>
+        /// <param name="path">Original path to potentially trim</param>
+        /// <param name="length">Max length of the path string returned</param>
+        /// <returns></returns>
+        public static string GetCompactPath(string path, int length = 70)
 	    {
 	        if (string.IsNullOrEmpty(path))
 	            return path;
 
-	        StringBuilder sb = new StringBuilder(length + 1);
-	        PathCompactPathEx(sb, path, 70, 0);
-	        return sb.ToString();
-	    }
+	        if (path.Length <= length)
+	            return path;
 
-	    [DllImport("shlwapi.dll", CharSet = CharSet.Auto)]
-	    static extern bool PathCompactPathEx([Out] StringBuilder pszOut, string szPath, int cchMax, int dwFlags);
+	        var index = -1;
+	        for (int i = path.Length-1; i >= 0; i--)
+	        {
+	            if (path[i] == '\\' || path[i] == '/')
+	            {
+	                index = i;
+                    break;
+	            }
+	        }
+
+            if (index == -1) // no slashes
+                return path.Substring(0,length); 
+
+	        var end = path.Substring(index);
+	        var start = path.Substring(0, index - 1);
+
+	        var maxStartLength = length - end.Length ;
+
+            var startBlock = start.Substring(0, maxStartLength);
+
+	        if (start.Length > maxStartLength)
+	            startBlock = startBlock.Substring(0, maxStartLength - 3) + "...";
+
+            return startBlock + end;
+	    }
 
 
         /// <summary>
@@ -383,6 +399,47 @@ namespace Westwind.Utilities
                 catch { }  // ignore locked files
             }
         }
+
+
+	    /// <summary>
+	    /// Creates an MD5 checksum of a file
+	    /// </summary>
+	    /// <param name="file"></param>        
+	    /// <param name="hashAlgorithm">SHA256, SHA512, SHA1, MD5</param>
+	    /// <returns>BinHex file hash</returns>
+	    public static string GetChecksumFromFile(string file, string hashAlgorithm = "MD5")
+	    {           
+	        if (!File.Exists(file))
+	            return null;
+
+	        try
+	        {
+	            byte[] checkSum;
+	            using (FileStream stream = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+	            {
+                    HashAlgorithm md = null;
+
+                    if(hashAlgorithm == "MD5")
+	                    md = new MD5CryptoServiceProvider();
+                    else if (hashAlgorithm == "SHA256")
+	                    md = new SHA256Managed();
+                    else if(hashAlgorithm == "SHA512")
+	                    md = new SHA512Managed();
+	                else if (hashAlgorithm == "SHA1")
+	                    md = new SHA1Managed();
+                    else	                   
+	                    md = new MD5CryptoServiceProvider();
+
+                    checkSum = md.ComputeHash(stream);
+	            }
+
+	            return StringUtils.BinaryToBinHex(checkSum);
+	        }
+	        catch
+	        {
+	            return null;
+	        }
+	    }
 
         #endregion
     }
