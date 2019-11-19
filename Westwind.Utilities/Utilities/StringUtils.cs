@@ -53,13 +53,13 @@ namespace Westwind.Utilities
 
 
         /// <summary>
-        /// Trims a sub string from a string
+        /// Trims a sub string from a string. 
         /// </summary>
         /// <param name="text"></param>
         /// <param name="textToTrim"></param>
-        /// <returns></returns>
+        /// <returns></returns>        
         public static string TrimStart(string text, string textToTrim, bool caseInsensitive)
-        {
+        {            
             while (true)
             {
                 string match = text.Substring(0, textToTrim.Length);
@@ -79,6 +79,24 @@ namespace Westwind.Utilities
         }
 
         /// <summary>
+        /// Trims a string to a specific number of max characters
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="charCount"></param>
+        /// <returns></returns>
+        [Obsolete("Please use the StringUtils.Truncate() method instead.")]
+        public static string TrimTo(string value, int charCount)
+        {
+            if (value == null)
+                return value;
+
+            if (value.Length > charCount)
+                return value.Substring(0, charCount);
+
+            return value;
+        }
+
+        /// <summary>
         /// Replicates an input string n number of times
         /// </summary>
         /// <param name="input"></param>
@@ -86,7 +104,7 @@ namespace Westwind.Utilities
         /// <returns></returns>
         public static string Replicate(string input, int charCount)
         {
-            return new StringBuilder().Insert(0, "input", charCount).ToString();
+            return new StringBuilder().Insert(0, input, charCount).ToString();
         }
 
         /// <summary>
@@ -97,8 +115,125 @@ namespace Westwind.Utilities
         /// <returns></returns>
         public static string Replicate(char character, int charCount)
         {
-            return new string(character, charCount);
+            return new StringBuilder().Insert(0, character.ToString(), charCount).ToString();
         }
+
+        /// <summary>
+        /// Finds the nth index of string in a string
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="matchString"></param>
+        /// <param name="stringInstance"></param>
+        /// <returns></returns>
+        public static int IndexOfNth(this string source, string matchString, int stringInstance, StringComparison stringComparison = StringComparison.CurrentCulture)
+        {
+            if (string.IsNullOrEmpty(source))
+                return -1;
+
+            int lastPos = 0;
+            int count = 0;
+           
+            while (count < stringInstance )
+            {
+                var len = source.Length - lastPos;
+                lastPos = source.IndexOf(matchString, lastPos,len,stringComparison);
+                if (lastPos == -1)
+                    break;
+
+                count++;
+                if (count == stringInstance)
+                    return lastPos;
+
+                lastPos += matchString.Length;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Returns the nth Index of a character in a string
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="matchChar"></param>
+        /// <param name="charInstance"></param>
+        /// <returns></returns>
+        public static int IndexOfNth(this string source, char matchChar, int charInstance)        
+        {
+            if (string.IsNullOrEmpty(source))
+                return -1;
+
+            if (charInstance < 1)
+                return -1;
+
+            int count = 0;
+            for (int i = 0; i < source.Length; i++)
+            {
+                if (source[i] == matchChar)
+                {
+                    count++;
+                    if (count == charInstance)                 
+                        return i;                 
+                }
+            }
+            return -1;
+        }
+
+
+
+        /// <summary>
+        /// Finds the nth index of strting in a string
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="matchString"></param>
+        /// <param name="charInstance"></param>
+        /// <returns></returns>
+        public static int LastIndexOfNth(this string source, string matchString, int charInstance, StringComparison stringComparison = StringComparison.CurrentCulture)
+        {
+            if (string.IsNullOrEmpty(source))
+                return -1;
+
+            int lastPos = source.Length;
+            int count = 0;
+
+            while (count < charInstance)
+            {                
+                lastPos = source.LastIndexOf(matchString, lastPos, lastPos, stringComparison);
+                if (lastPos == -1)
+                    break;
+
+                count++;
+                if (count == charInstance)
+                    return lastPos;                
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Finds the nth index of in a string from the end.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="matchChar"></param>
+        /// <param name="charInstance"></param>
+        /// <returns></returns>
+        public static int LastIndexOfNth(this string source, char matchChar, int charInstance)
+        {
+            if (string.IsNullOrEmpty(source))
+                return -1;
+
+            int count = 0;
+            for (int i = source.Length-1 ; i > -1; i--)
+            {
+                if (source[i] == matchChar)
+                {
+                    count++;
+                    if (count == charInstance)
+                        return i;
+                }
+            }
+            return -1;
+        }
+        #endregion
+
+        #region String Casing
 
         /// <summary>
         /// Return a string in proper Case format
@@ -164,8 +299,8 @@ namespace Westwind.Utilities
         /// <returns></returns>
         public static string FromCamelCase(string camelCase)
         {
-            if (camelCase == null)
-                throw new ArgumentException("Null is not allowed for StringUtils.FromCamelCase");
+            if (string.IsNullOrEmpty(camelCase))
+                return camelCase;
 
             StringBuilder sb = new StringBuilder(camelCase.Length + 10);
             bool first = true;
@@ -186,54 +321,22 @@ namespace Westwind.Utilities
             return sb.ToString(); ;
         }
 
-        /// <summary>
-        /// Terminates a string with the given end string/character, but only if the
-        /// value specified doesn't already exist and the string is not empty.
-        /// </summary>
-        /// <param name="value">String to terminate</param>
-        /// <param name="terminator">String to terminate the value string with</param>
-        /// <returns></returns>
-        public static string TerminateString(string value, string terminator)
-        {
-            if (string.IsNullOrEmpty(value))
-                return terminator;
-                    
-            if(value.EndsWith(terminator))
-                return value;
-
-            return value + terminator;
-        }
-
-        /// <summary>
-        /// Trims a string to a specific number of max characters
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="charCount"></param>
-        /// <returns></returns>
-        public static string TrimTo(string value, int charCount)
-        {
-            if (value == null)
-                return string.Empty;
-
-            if (value.Length > charCount)
-                return value.Substring(0, charCount);
-
-            return value;
-        }
-
         #endregion
 
         #region String Manipulation
+
         /// <summary>
         /// Extracts a string from between a pair of delimiters. Only the first 
         /// instance is found.
         /// </summary>
         /// <param name="source">Input String to work on</param>
-        /// <param name="StartDelim">Beginning delimiter</param>
+        /// <param name="beginDelim">Beginning delimiter</param>
         /// <param name="endDelim">ending delimiter</param>
-        /// <param name="CaseInsensitive">Determines whether the search for delimiters is case sensitive</param>
-        /// <returns>Extracted string or ""</returns>
-        public static string ExtractString(string source,
+        /// <param name="caseSensitive">Determines whether the search for delimiters is case sensitive</param>        
+        /// <param name="allowMissingEndDelimiter"></param>
+        /// <param name="returnDelimiters"></param>
+        /// <returns>Extracted string or string.Empty on no match</returns>
+        public static string ExtractString(this string source,
             string beginDelim,
             string endDelim,
             bool caseSensitive = false,
@@ -247,11 +350,11 @@ namespace Westwind.Utilities
 
             if (caseSensitive)
             {
-                at1 = source.IndexOf(beginDelim);
+                at1 = source.IndexOf(beginDelim,StringComparison.CurrentCulture);
                 if (at1 == -1)
                     return string.Empty;
 
-                at2 = source.IndexOf(endDelim, at1 + beginDelim.Length);
+                at2 = source.IndexOf(endDelim, at1 + beginDelim.Length,StringComparison.CurrentCulture);
             }
             else
             {
@@ -281,7 +384,6 @@ namespace Westwind.Utilities
 
             return string.Empty;
         }
-
 
 
         /// <summary>
@@ -349,6 +451,18 @@ namespace Westwind.Utilities
         }
 
         /// <summary>
+        /// Truncate a string to maximum length.
+        /// </summary>
+        /// <param name="text">Text to truncate</param>
+        /// <param name="maxLength">Maximum length</param>
+        /// <returns>Trimmed string</returns>
+        public static string Truncate(this string text, int maxLength)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            return text.Length <= maxLength ? text : text.Substring(0, maxLength);
+        }
+
+        /// <summary>
         /// Returns an abstract of the provided text by returning up to Length characters
         /// of a text string. If the text is truncated a ... is appended.
         /// </summary>
@@ -369,6 +483,39 @@ namespace Westwind.Utilities
             return text + "...";
         }
 
+        /// <summary>
+        /// Terminates a string with the given end string/character, but only if the
+        /// text specified doesn't already exist and the string is not empty.
+        /// </summary>
+        /// <param name="value">String to terminate</param>
+        /// <param name="terminator">String to terminate the text string with</param>
+        /// <returns></returns>
+        public static string TerminateString(string value, string terminator)
+        {
+            if (string.IsNullOrEmpty(value))
+                return terminator;
+                    
+            if(value.EndsWith(terminator))
+                return value;
+
+            return value + terminator;
+        }
+
+
+        /// <summary>
+        /// Returns the number or right characters specified
+        /// </summary>
+        /// <param name="full">full string to work with</param>
+        /// <param name="rightCharCount">number of right characters to return</param>
+        /// <returns></returns>
+        public static string Right(string full, int rightCharCount)
+        {
+            if (string.IsNullOrEmpty(full) || full.Length < rightCharCount || full.Length - rightCharCount < 0)
+                return full;
+
+            return full.Substring(full.Length - rightCharCount);
+        }
+
         #endregion
 
         #region String Parsing
@@ -383,6 +530,20 @@ namespace Westwind.Utilities
             return list.Contains(s);
         }
 
+
+        /// <summary>
+        /// String.Contains() extension method that allows to specify case
+        /// </summary>
+        /// <param name="text">Input text</param>
+        /// <param name="searchFor">text to search for</param>
+        /// <param name="stringComparison">Case sensitivity options</param>
+        /// <returns></returns>
+        public static bool Contains(this string text, string searchFor, StringComparison stringComparison)
+        {
+            return text.IndexOf(searchFor, stringComparison) > -1;
+        }
+
+
         /// <summary>
         /// Parses a string into an array of lines broken
         /// by \r\n or \n
@@ -390,7 +551,7 @@ namespace Westwind.Utilities
         /// <param name="s">String to check for lines</param>
         /// <param name="maxLines">Optional - max number of lines to return</param>
         /// <returns>array of strings, or null if the string passed was a null</returns>
-        public static string[] GetLines(string s, int maxLines = 0)
+        public static string[] GetLines(this string s, int maxLines = 0)
         {
             if (s == null)
                 return null;
@@ -408,49 +569,12 @@ namespace Westwind.Utilities
         /// </summary>
         /// <param name="s">string to count lines for</param>
         /// <returns></returns>
-        public static int CountLines(string s)
+        public static int CountLines(this string s)
         {
             if (string.IsNullOrEmpty(s))
                 return 0;
 
             return s.Split('\n').Length;
-        }
-
-        /// <summary>
-        /// Parses an string into an integer. If the value can't be parsed
-        /// a default value is returned instead
-        /// </summary>
-        /// <param name="input">Input numeric string to be parsed</param>
-        /// <param name="defaultValue">Optional default value if parsing fails</param>
-        /// <param name="formatProvider">Optional NumberFormat provider. Defaults to current culture's number format</param>
-        /// <returns></returns>
-        public static int ParseInt(string input, int defaultValue=0, IFormatProvider numberFormat = null)
-        {
-            if (numberFormat == null)
-                numberFormat = CultureInfo.CurrentCulture.NumberFormat;
-
-            int val = defaultValue;
-            if (!int.TryParse(input, NumberStyles.Any, numberFormat, out val))
-                return defaultValue;
-            return val;
-        }
-
-
-
-        /// <summary>
-        /// Parses an string into an decimal. If the value can't be parsed
-        /// a default value is returned instead
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="defaultValue"></param>
-        /// <returns></returns>
-        public static decimal ParseDecimal(string input, decimal defaultValue = 0M, IFormatProvider numberFormat = null)
-        {
-            numberFormat = numberFormat ?? CultureInfo.CurrentCulture.NumberFormat;
-            decimal val = defaultValue;
-            if (!decimal.TryParse(input, NumberStyles.Any, numberFormat, out val))
-                return defaultValue;
-            return val;
         }
 
         /// <summary>
@@ -472,12 +596,12 @@ namespace Westwind.Utilities
             return sb.ToString();
         }
 
-        
+
         static Regex tokenizeRegex = new Regex("{{.*?}}");
 
         /// <summary>
         /// Tokenizes a string based on a start and end string. Replaces the values with a token
-        /// value (#@#1#@# for example).
+        /// text (#@#1#@# for example).
         /// 
         /// You can use Detokenize to get the original values back
         /// </summary>
@@ -521,6 +645,43 @@ namespace Westwind.Utilities
                 i++;
             }
             return text;
+        }
+
+        /// <summary>
+        /// Parses an string into an integer. If the text can't be parsed
+        /// a default text is returned instead
+        /// </summary>
+        /// <param name="input">Input numeric string to be parsed</param>
+        /// <param name="defaultValue">Optional default text if parsing fails</param>
+        /// <param name="formatProvider">Optional NumberFormat provider. Defaults to current culture's number format</param>
+        /// <returns></returns>
+        public static int ParseInt(string input, int defaultValue=0, IFormatProvider numberFormat = null)
+        {
+            if (numberFormat == null)
+                numberFormat = CultureInfo.CurrentCulture.NumberFormat;
+
+            int val = defaultValue;
+            if (!int.TryParse(input, NumberStyles.Any, numberFormat, out val))
+                return defaultValue;
+            return val;
+        }
+
+
+
+        /// <summary>
+        /// Parses an string into an decimal. If the text can't be parsed
+        /// a default text is returned instead
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public static decimal ParseDecimal(string input, decimal defaultValue = 0M, IFormatProvider numberFormat = null)
+        {
+            numberFormat = numberFormat ?? CultureInfo.CurrentCulture.NumberFormat;
+            decimal val = defaultValue;
+            if (!decimal.TryParse(input, NumberStyles.Any, numberFormat, out val))
+                return defaultValue;
+            return val;
         }
 
         #endregion
@@ -617,11 +778,11 @@ namespace Westwind.Utilities
         }
 
         /// <summary>
-        /// Retrieves a value by key from a UrlEncoded string.
+        /// Retrieves a text by key from a UrlEncoded string.
         /// </summary>
         /// <param name="urlEncoded">UrlEncoded String</param>
-        /// <param name="key">Key to retrieve value for</param>
-        /// <returns>returns the value or "" if the key is not found or the value is blank</returns>
+        /// <param name="key">Key to retrieve text for</param>
+        /// <returns>returns the text or "" if the key is not found or the text is blank</returns>
         public static string GetUrlEncodedKey(string urlEncoded, string key)
         {
             urlEncoded = "&" + urlEncoded + "&";
@@ -640,10 +801,10 @@ namespace Westwind.Utilities
         }
 
         /// <summary>
-        /// Allows setting of a value in a UrlEncoded string. If the key doesn't exist
-        /// a new one is set, if it exists it's replaced with the new value.
+        /// Allows setting of a text in a UrlEncoded string. If the key doesn't exist
+        /// a new one is set, if it exists it's replaced with the new text.
         /// </summary>
-        /// <param name="urlEncoded">A UrlEncoded string of key value pairs</param>
+        /// <param name="urlEncoded">A UrlEncoded string of key text pairs</param>
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
@@ -919,7 +1080,7 @@ namespace Westwind.Utilities
         }
 
         /// <summary>
-        /// Retrieves a value from an XML-like string
+        /// Retrieves a text from an XML-like string
         /// </summary>
         /// <param name="propertyString"></param>
         /// <param name="key"></param>
@@ -928,6 +1089,8 @@ namespace Westwind.Utilities
         {
             return StringUtils.ExtractString(propertyString, "<" + key + ">", "</" + key + ">");
         }
+
+
 
         /// <summary>
         /// 
@@ -953,31 +1116,6 @@ namespace Westwind.Utilities
 
             // add new
             return propertyString + xmlLine + "\r\n";
-        }
-
-        #endregion
-
-        #region Obsolete
-        /// <summary>
-        /// Determines whether a string is empty (null or zero length)
-        /// </summary>
-        /// <param name="text">Input string</param>
-        /// <returns>true or false</returns>
-        [Obsolete("Use string.IsNullOrEmpty() instead")]
-        public static bool Empty(string text)
-        {
-            return string.IsNullOrEmpty(text);
-        }
-
-        /// <summary>
-        /// Determines wheter a string is empty (null or zero length)
-        /// </summary>
-        /// <param name="text">Input string (in object format)</param>
-        /// <returns>true or false</returns>        
-        [Obsolete("Use string.IsNullOrEmpty() instead")]
-        public static bool Empty(object text)
-        {
-            return string.IsNullOrEmpty(text as string);
         }
 
         #endregion

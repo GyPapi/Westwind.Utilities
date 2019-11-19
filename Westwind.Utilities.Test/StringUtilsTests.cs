@@ -85,20 +85,9 @@ namespace Westwind.Utilities.Tests
             string actual = StringUtils.FromCamelCase(original);
             Assert.AreEqual(expected, actual, "Failed Simple Test");
 
-            expected = "not hit";
+            expected = null;
             original = null;
-            actual = expected;
-
-            try
-            {
-                // null should throw ArgumentException
-                actual = StringUtils.FromCamelCase(original);
-            }
-            catch (Exception ex)
-            {
-                Assert.IsTrue(ex is ArgumentException, "Failed Null Test");
-            }
-
+            actual = StringUtils.FromCamelCase(original);
             Assert.AreEqual(expected, actual, "Failed null test - exception should have been thrown.");
 
             expected = "Pronto 123";
@@ -106,10 +95,42 @@ namespace Westwind.Utilities.Tests
             actual = StringUtils.FromCamelCase(original);
             Assert.AreEqual(expected, actual, "Failed Embedded Numbers Test");
 
+
+            expected = "The Mountains Are Beautiful";
+            original = "TheMountainsAreBeautiful";
+            actual = StringUtils.FromCamelCase(original);
+            Assert.AreEqual(expected, actual, "Failed Long String Of Text");
+
+
             expected = "None";
             original = "None";
             actual = StringUtils.FromCamelCase(original);
             Assert.AreEqual(expected, actual, "Failed No CamelCase Test");
+
+        }
+
+        [TestMethod]
+        public void ToCamelCaseUpperCasingTest()
+        {
+
+            var original = "ABCCompany";
+            var expected = "A B C Company";
+            var actual = StringUtils.FromCamelCase(original);
+            Console.WriteLine(actual);
+            Assert.AreEqual(expected, actual, "Failed UpperCase Letters CamelCase Test");
+
+            original = "ThisIsATest";
+            expected = "This Is A Test";
+            actual = StringUtils.FromCamelCase(original);
+            Console.WriteLine(actual);
+            Assert.AreEqual(expected, actual, "Failed UpperCase Letters CamelCase Test");
+
+            original = "ABCdef";
+            expected = "A B Cdef";
+            actual = StringUtils.FromCamelCase(original);
+            Console.WriteLine(actual);
+            Assert.AreEqual(expected, actual, "Failed UpperCase Letters CamelCase Test");
+
         }
 
         [TestMethod]
@@ -151,6 +172,19 @@ namespace Westwind.Utilities.Tests
             result = StringUtils.NormalizeIndentation(code).Trim();
 
             Assert.IsTrue(result.Substring(0, 3) == "***", "Not indented");
+        }
+
+        [TestMethod]
+        public void ReplicateStringTest()
+        {
+            Assert.IsTrue(StringUtils.Replicate("123", 3) == "123123123");
+            Assert.IsTrue(StringUtils.Replicate("1", 2) == "11");
+        }
+
+        [TestMethod]
+        public void ReplicateCharTest()
+        {            
+            Assert.IsTrue(StringUtils.Replicate('1', 4) == "1111");
         }
 
         [TestMethod]
@@ -311,6 +345,127 @@ multiple lines";
             s = null;
             count = StringUtils.CountLines(s);
             Assert.IsTrue(count == 0);
+        }
+
+        [TestMethod]
+        public void IndexOfNthCharTest()
+        {
+            string version = "1.11.13.2";
+
+            var idx = StringUtils.IndexOfNth(version, '.', 1);
+            Assert.IsTrue(idx == 1);
+
+
+            idx = StringUtils.IndexOfNth(version, '.', 3);
+            Assert.IsTrue(version.Substring(idx, 1) == ".");
+
+            idx = StringUtils.IndexOfNth(version, '.', 2);
+            Assert.IsTrue(version.Substring(idx, 1) == ".");
+
+            idx = StringUtils.IndexOfNth(version, '.', 1);
+            Assert.IsTrue(version.Substring(idx, 1) == ".");
+
+            idx = StringUtils.IndexOfNth(version, '.', 4);
+            Assert.IsTrue(idx == -1,"");
+
+            version = string.Empty;
+            idx = StringUtils.IndexOfNth(version, '.', 2);
+            Assert.IsTrue(idx == -1);
+
+            version = null;
+            idx = StringUtils.IndexOfNth(version, '.', 2);
+            Assert.IsTrue(idx == -1);
+        }
+
+        [TestMethod]
+        public void IndexOfNthStringTest()
+        {
+            string version = "11.11.11.11";
+
+            var idx = StringUtils.IndexOfNth(version, ".11", 1);
+            Assert.IsTrue(idx == 2,"position should be 3");
+
+            idx = StringUtils.IndexOfNth(version, ".11", 2);                   
+            Assert.IsTrue(idx == 5,"position should be 5");
+
+            idx = StringUtils.IndexOfNth(version, ".11", 3);            
+            Assert.IsTrue(idx == 8, "position should be 8");
+            
+            idx = StringUtils.IndexOfNth(version, ".11", 4);
+            Assert.IsTrue(idx == -1, "no 4th item");
+            
+            idx = StringUtils.IndexOfNth(version, "11.", 1);
+            Assert.IsTrue(idx == 0, "should be at start of string");
+
+            version = string.Empty;
+            idx = StringUtils.IndexOfNth(version, ".11", 2);
+            Assert.IsTrue(idx == -1,"not empty");
+
+            version = null;
+            idx = StringUtils.IndexOfNth(version, ".11", 2);
+            Assert.IsTrue(idx == -1,"not null");
+        }
+
+
+        [TestMethod]
+        public void LastIndexOfNthStringTest()
+        {
+            string version = "1.11.11.11";
+
+            var idx = StringUtils.LastIndexOfNth(version, ".11", 3);
+            Assert.IsTrue(idx == 1, "Should be index of 1");
+            
+            idx = StringUtils.LastIndexOfNth(version, ".11", 1);            
+            Assert.IsTrue(idx == 7, "should be . at index 7");
+            Assert.IsTrue(version.Substring(idx, 3) == ".11", "should be . at index 7");
+            
+            idx = StringUtils.LastIndexOfNth(version, ".11", 2);
+            Assert.IsTrue(idx == 4, "should be . at index 4");
+
+            idx = StringUtils.LastIndexOfNth(version, '.', 3);           
+            Assert.IsTrue(idx == 1,"index should be at 1");
+
+            idx = StringUtils.LastIndexOfNth(version, '.', 4);
+            Assert.IsTrue(idx == -1, "should not match 4th .");
+
+            version = string.Empty;
+            idx = StringUtils.LastIndexOfNth(version, '.', 2);
+            Assert.IsTrue(idx == -1, "");
+
+            version = null;
+            idx = StringUtils.LastIndexOfNth(version, '.', 2);
+            Assert.IsTrue(idx == -1);
+        }
+
+        [TestMethod]
+        public void LastIndexOfNthCharTest()
+        {
+            string version = "1.11.13.2";
+
+            var idx = StringUtils.LastIndexOfNth(version, '.', 3);
+            Assert.IsTrue(idx == 1,"Should be index of 1");
+
+
+            idx = StringUtils.LastIndexOfNth(version, '.', 1);
+            Assert.IsTrue(version.Substring(idx, 1) == ".","should be . at index 1");
+
+            idx = StringUtils.LastIndexOfNth(version, '.', 2);
+            Assert.IsTrue(version.Substring(idx, 1) == ".","should be . at index 2");
+
+            idx = StringUtils.LastIndexOfNth(version, '.', 3);
+            Assert.IsTrue(version.Substring(idx, 1) == ".","should be . at index 3");
+            Assert.IsTrue(idx == 1);
+
+            idx = StringUtils.LastIndexOfNth(version, '.', 4);
+            Assert.IsTrue(idx == -1,"should not match 4th .");
+
+            version = string.Empty;
+            idx = StringUtils.LastIndexOfNth(version, '.', 2);
+            Assert.IsTrue(idx == -1,"");
+
+            version = null;
+            idx = StringUtils.LastIndexOfNth(version, '.', 2);
+            Assert.IsTrue(idx == -1);
         }
 
 

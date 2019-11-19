@@ -1,4 +1,4 @@
-﻿#region License
+﻿#region 
 /*
  **************************************************************
  *  Author: Rick Strahl 
@@ -33,19 +33,264 @@
 
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Runtime.InteropServices;
 using System.IO;
 using System.Net;
 using System.Diagnostics;
 
 namespace Westwind.Utilities
 {
+
+    /// <summary>
+    /// Windows specific shell utility functions 
+    /// </summary>
     public static class ShellUtils
     {
 
+        #region Open in or Start Process
+        /// <summary>
+        /// Opens a File or Folder in Explorer. If the path is a file
+        /// Explorer is opened in the parent folder with the file selected
+        /// </summary>
+        /// <param name="filename"></param>
+        public static void OpenFileInExplorer(string filename)
+        {
+            if (Directory.Exists(filename))
+                ShellUtils.GoUrl(filename);
+            else
+            {
+                if (!File.Exists(filename))
+                    filename = Path.GetDirectoryName(filename);
+    
+                Process.Start("explorer.exe", $"/select,\"{filename}\"");
+            }
+        }
+
+        /// <summary>
+        /// Executes a Windows process with given command line parameters
+        /// </summary>
+        /// <param name="executable">Executable to run</param>
+        /// <param name="arguments">Command Line Parameters passed to executable</param>
+        /// <param name="timeoutMs">Timeout of the process in milliseconds. Pass -1 to wait forever. Pass 0 to not wait.</param>
+        /// <param name="windowStyle">Hidden, Normal etc.</param>
+        /// <returns>process exit code or 0 if run and forget. 1460 for time out. -1 on error</returns>
+        public static int ExecuteProcess(string executable, 
+                                        string arguments = null, 
+                                        int timeoutMs = 0, 
+                                        ProcessWindowStyle windowStyle = ProcessWindowStyle.Hidden)
+        {
+            Process process;
+
+            try
+            {
+                using (process = new Process())
+                {
+                    process.StartInfo.FileName = executable;
+                    process.StartInfo.Arguments = arguments;
+                    process.StartInfo.WindowStyle = windowStyle;
+                    if (windowStyle == ProcessWindowStyle.Hidden)
+                        process.StartInfo.CreateNoWindow = true;
+
+                    process.StartInfo.UseShellExecute = false;
+                    process.Start();
+
+                    if (timeoutMs < 0)
+                        timeoutMs = 99999999; // indefinitely
+
+                    if (timeoutMs > 0)
+                    {
+                        if (!process.WaitForExit(timeoutMs))
+                        {
+                            Console.WriteLine("Process timed out.");
+                            return 1460;
+                        }
+                    }
+                    else // run and don't wait - no exit code
+                        return 0;
+
+                    return process.ExitCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error executing process: " + ex.Message);
+                return -1; // unhandled error
+            }
+        }
+
+        /// <summary>
+        /// Executes a Windows process with given command line parameters
+        /// and captures console output into a string.
+        ///
+        /// Writes command output to the output StringBuilder
+        /// from StdOut and StdError.
+        /// </summary>
+        /// <param name="executable">Executable to run</param>
+        /// <param name="arguments">Command Line Parameters passed to executable</param>
+        /// <param name="timeoutMs">Timeout of the process in milliseconds. Pass -1 to wait forever. Pass 0 to not wait.</param>
+        /// <param name="output">Pass in a string reference that will receive StdOut and StdError output</param>
+        /// <param name="windowStyle">Hidden, Normal, etc.</param>
+        /// <returns>process exit code or 0 if run and forget. 1460 for time out. -1 on error</returns>
+        public static int ExecuteProcess(string executable,
+            string arguments,
+            int timeoutMs,
+            out StringBuilder output,
+            ProcessWindowStyle windowStyle = ProcessWindowStyle.Hidden)
+        {
+            return ExecuteProcess(executable, arguments, timeoutMs, out output, null, windowStyle);
+        }
+
+
+        /// <summary>
+        /// Executes a Windows process with given command line parameters
+        /// and captures console output into a string.
+        ///
+        /// Pass in a String Action that receives output from
+        /// StdOut and StdError as it is written (one line at a time).
+        /// </summary>
+        /// <param name="executable">Executable to run</param>
+        /// <param name="arguments">Command Line Parameters passed to executable</param>
+        /// <param name="timeoutMs">Timeout of the process in milliseconds. Pass -1 to wait forever. Pass 0 to not wait.</param>
+        /// <param name="writeDelegate">Delegate to let you capture streaming output of the executable to stdout and stderror.</param>
+        /// <param name="windowStyle">Hidden, Normal etc.</param>
+        /// <returns>process exit code or 0 if run and forget. 1460 for time out. -1 on error</returns>
+        public static int ExecuteProcess(string executable,
+            string arguments,
+            int timeoutMs,
+            Action<string> writeDelegate,
+            ProcessWindowStyle windowStyle = ProcessWindowStyle.Hidden)
+        {
+            return ExecuteProcess(executable, arguments, timeoutMs, out StringBuilder output, writeDelegate, windowStyle);
+        }
+
+
+        /// <summary>
+        /// Executes a Windows process with given command line parameters
+        /// and captures console output into a string.
+        ///
+        /// Writes original output into the application Console which you can
+        /// optionally redirect to capture output from the command line
+        /// operation using `Console.SetOut` or `Console.SetError`.
+        /// </summary>
+        /// <param name="executable">Executable to run</param>
+        /// <param name="arguments"></param>
+        /// <param name="timeoutMs">Timeout of the process in milliseconds. Pass -1 to wait forever. Pass 0 to not wait.</param>
+        /// <param name="output">StringBuilder that will receive StdOut and StdError output</param>
+        /// <param name="writeDelegate">Action to capture stdout and stderror output for you to handle</param>
+        /// <param name="windowStyle"></param>
+        /// <returns>process exit code or 0 if run and forget. 1460 for time out. -1 on error</returns>
+        private static int ExecuteProcess(string executable,
+                                        string arguments,
+                                        int timeoutMs,
+                                        out StringBuilder output,
+                                        Action<string> writeDelegate = null,
+                                        ProcessWindowStyle windowStyle = ProcessWindowStyle.Hidden)
+        {
+            Process process;
+
+            try
+            {
+                using (process = new Process())
+                {
+                    process.StartInfo.FileName = executable;
+                    process.StartInfo.Arguments = arguments;
+                    process.StartInfo.WindowStyle = windowStyle;
+                    if (windowStyle == ProcessWindowStyle.Hidden)
+                        process.StartInfo.CreateNoWindow = true;
+
+                    process.StartInfo.UseShellExecute = false;
+
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.StartInfo.RedirectStandardError = true;
+
+                    var sb  = new StringBuilder();
+
+                    process.OutputDataReceived += (sender, args) =>
+                    {
+                        if (writeDelegate != null)
+                            writeDelegate.Invoke(args.Data);
+                        else
+                            sb.AppendLine(args.Data);
+                    };
+                    process.ErrorDataReceived += (sender, args) =>
+                    {
+                        if (writeDelegate != null)
+                            writeDelegate.Invoke(args.Data);
+                        else
+                            sb.AppendLine(args.Data);
+                    };
+
+                    process.Start();
+
+                    process.BeginErrorReadLine();
+                    process.BeginOutputReadLine();
+
+
+                    if (timeoutMs < 0)
+                        timeoutMs = 99999999; // indefinitely
+
+                    if (timeoutMs > 0)
+                    {
+                        if (!process.WaitForExit(timeoutMs))
+                        {
+                            Console.WriteLine("Process timed out.");
+                            output = null;
+                            return 1460;
+                        }
+                    }
+                    else
+                    {
+                        // no exit code
+                        output = sb;
+                        return 0;
+                    }
+
+                    output = sb;
+                    return process.ExitCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error executing process: {ex.Message}");
+                output = null;
+                return -1; // unhandled error
+            }
+        }
+
+        /// <summary>
+        /// Opens a Terminal window in the specified folder
+        /// </summary>
+        /// <param name="folder"></param>
+        /// <param  name="mode">Powershell, Command or Bash</param>
+        /// <returns>false if process couldn't be started - most likely invalid link</returns>
+        public static bool OpenTerminal(string folder, TerminalModes mode = TerminalModes.Powershell)
+        {
+            try
+            {
+                string cmd = null, args = null;
+
+                if (mode == TerminalModes.Powershell)
+                {
+                    cmd = "powershell.exe";
+                    args = "-noexit -command \"cd '{0}'\"";
+                }
+                else if(mode == TerminalModes.Command)
+                {
+                    cmd = "cmd.exe";
+                    args = "/k \"cd {0}\"";
+                }
+                
+                Process.Start(cmd,string.Format(args, folder));
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+#endregion
+
+        #region URL and HTTP Access
         /// <summary>
         /// Uses the Shell Extensions to launch a program based on URL moniker or file name
         /// Basically a wrapper around ShellExecute
@@ -140,17 +385,17 @@ namespace Westwind.Utilities
             string responseText = string.Empty;
             errorMessage = null;
 
-            WebClient Http = new WebClient();
-
-            // Download the Web resource and save it into a data buffer.
-            try
+            using (WebClient Http = new WebClient())
             {
-                responseText = Http.DownloadString(url);                
-            }
-            catch (Exception ex)
-            {
-                errorMessage = ex.Message;
-                return null;
+                try
+                {
+                    responseText = Http.DownloadString(url);                
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                    return null;
+                }
             }
 
             return responseText;
@@ -181,20 +426,28 @@ namespace Westwind.Utilities
             byte[] result = null;
             errorMessage = null;
 
-            var Http = new WebClient();
-
-            try
+            using (var http = new WebClient())
             {
-                result = Http.DownloadData(url);
-            }
-            catch (Exception ex)
-            {
-                errorMessage = ex.Message;
-                return null;
+                try
+                {
+                    result = http.DownloadData(url);
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                    return null;
+                }
             }
 
             return result;
         }
+        #endregion
+    }
 
+    public enum TerminalModes
+    {
+        Powershell,
+        Command,
+        Bash
     }
 }

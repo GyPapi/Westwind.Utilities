@@ -81,7 +81,7 @@ namespace Westwind.Utilities
 
 
             // fix up line breaks into <br><p>
-            text = DisplayMemo(HtmlEncode(text)); //HttpUtility.HtmlEncode(Text));
+            text = DisplayMemo(System.Net.WebUtility.HtmlEncode(text)); //HttpUtility.HtmlEncode(Text));
 
             if (PreTag)
             {
@@ -97,45 +97,50 @@ namespace Westwind.Utilities
         /// </summary>
         /// <param name="text">The text string to encode. </param>
         /// <returns>The HTML-encoded text.</returns>
+        [Obsolete("Use System.Net.WebUtility.HtmlEncode() instead.")]
         public static string HtmlEncode(string text)
         {
-            if (text == null)
-                return string.Empty;
+            return System.Net.WebUtility.HtmlEncode(text);
+            //if (text == null)
+            //    return string.Empty;
 
-            StringBuilder sb = new StringBuilder(text.Length);
+            //StringBuilder sb = new StringBuilder(text.Length);
 
-            int len = text.Length;
-            for (int i = 0; i < len; i++)
-            {
-                switch (text[i])
-                {
+            //int len = text.Length;
+            //for (int i = 0; i < len; i++)
+            //{
+            //    switch (text[i])
+            //    {
 
-                    case '<':
-                        sb.Append("&lt;");
-                        break;
-                    case '>':
-                        sb.Append("&gt;");
-                        break;
-                    case '"':
-                        sb.Append("&quot;");
-                        break;
-                    case '&':
-                        sb.Append("&amp;");
-                        break;
-                    default:
-                        if (text[i] > 159)
-                        {
-                            // decimal numeric entity
-                            sb.Append("&#");
-                            sb.Append(((int)text[i]).ToString(CultureInfo.InvariantCulture));
-                            sb.Append(";");
-                        }
-                        else
-                            sb.Append(text[i]);
-                        break;
-                }
-            }
-            return sb.ToString();
+            //        case '<':
+            //            sb.Append("&lt;");
+            //            break;
+            //        case '>':
+            //            sb.Append("&gt;");
+            //            break;
+            //        case '"':
+            //            sb.Append("&quot;");
+            //            break;
+            //        case '&':
+            //            sb.Append("&amp;");
+            //            break;
+            //        case '\'':
+            //            sb.Append("&#39;");
+            //            break;				
+            //        default:
+            //            if (text[i] > 159)
+            //            {
+            //                // decimal numeric entity
+            //                sb.Append("&#");
+            //                sb.Append(((int)text[i]).ToString(CultureInfo.InvariantCulture));
+            //                sb.Append(";");
+            //            }
+            //            else
+            //                sb.Append(text[i]);
+            //            break;
+            //    }
+            //}
+            //return sb.ToString();
         }
 
 
@@ -232,11 +237,11 @@ namespace Westwind.Utilities
 				// Just to be sure fix up any double slashes
 				return newUrl;
 #else
-				throw new ArgumentException("Invalid URL: Relative URL not allowed.");
+                throw new ArgumentException("Invalid URL: Relative URL not allowed.");
 #endif
-			}
+            }
 
-			return originalUrl;
+            return originalUrl;
         }
 
 
@@ -252,5 +257,77 @@ namespace Westwind.Utilities
         }
 
 
+        static string DefaultHtmlSanitizeTagBlackList { get; } = "script|iframe|object|embed|form";
+
+        static Regex _RegExScript = new Regex($@"(<({DefaultHtmlSanitizeTagBlackList})\b[^<]*(?:(?!<\/({DefaultHtmlSanitizeTagBlackList}))<[^<]*)*<\/({DefaultHtmlSanitizeTagBlackList})>)",
+        RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+        // strip javascript: and unicode representation of javascript:
+        // href='javascript:alert(\"gotcha\")'
+        // href='&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;:alert(\"gotcha\");'
+        static Regex _RegExJavaScriptHref = new Regex(
+            @"<[^>]*?\s(href|src|dynsrc|lowsrc)=.{0,20}((javascript:)|(&#)).*?>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        static Regex _RegExOnEventAttributes = new Regex(
+            @"<[^>]*?\s(on[^\s\\]{0,20}=([""].*?[""]|['].*?['])).*?(>|\/>)",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        /// <summary>
+        /// Sanitizes HTML to some of the most of 
+        /// </summary>
+        /// <remarks>
+        /// This provides rudimentary HTML sanitation catching the most obvious
+        /// XSS script attack vectors. For mroe complete HTML Sanitation please look into
+        /// a dedicated HTML Sanitizer.
+        /// </remarks>
+        /// <param name="html">input html</param>
+        /// <param name="htmlTagBlacklist">A list of HTML tags that are stripped.</param>
+        /// <returns>Sanitized HTML</returns>
+        public static string SanitizeHtml(string html, string htmlTagBlacklist = "script|iframe|object|embed|form")
+        {
+            if (string.IsNullOrEmpty(html))
+                return html;
+
+            if (string.IsNullOrEmpty(htmlTagBlacklist) || htmlTagBlacklist == DefaultHtmlSanitizeTagBlackList)
+            {
+                // Use the default list of tags Replace Script tags - reused expr is more efficient
+                html = _RegExScript.Replace(html, string.Empty);
+            }
+            else
+            {
+                // create a custom list including provided tags
+                html = Regex.Replace(html,
+                                        $@"(<({htmlTagBlacklist})\b[^<]*(?:(?!<\/({DefaultHtmlSanitizeTagBlackList}))<[^<]*)*<\/({htmlTagBlacklist})>)",
+                                        "", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            }
+
+            // Remove javascript: directives
+            var matches = _RegExJavaScriptHref.Matches(html);
+            foreach (Match match in matches)
+            {
+                if (match.Groups.Count > 2)
+                {
+                    var txt = match.Value.Replace(match.Groups[2].Value, "unsupported:");
+                    html = html.Replace(match.Value, txt);
+                }
+            }
+
+            // Remove onEvent handlers from elements
+            matches = _RegExOnEventAttributes.Matches(html);
+            foreach (Match match in matches)
+            {
+                var txt = match.Value;
+                if (match.Groups.Count > 1)
+                {
+                    var onEvent = match.Groups[1].Value;
+                    txt = txt.Replace(onEvent, string.Empty);
+                    if (!string.IsNullOrEmpty(txt))
+                        html = html.Replace(match.Value, txt);
+                }
+            }
+
+            return html;
+        }
     }
 }

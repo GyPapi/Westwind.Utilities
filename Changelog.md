@@ -1,9 +1,79 @@
 ﻿# Westwind.Utilities Changelog
 
-### 3.0.12
+### 3.0.30
+*August 28th, 2019*
+
+* **Add some Async Methods to DataAccessBase**  
+Add `ExecuteNonQueryAsync`, `ExecuteScalarAsync`, `InsertEntityAsync` methods. More to come in future updates.
+
+* **StringUtils.Right() Method**  
+Add method to retrieve the rightmost characters from a string.
+
+* **Update: ShellUtils.ExecuteProcess with Output Capture**  
+Add overload for `ShellUtils.ExecuteProcess()` that allows passing in a string that is filled with the output generated from execution of a command line tool or an optional `Action<string>` that can intercept output as it's generated and fire your own capture code.
+
+### 3.0.28
+*June 23rd, 2019*
+
+* **DataUtils.IndexOfByteArray()**  
+Small helper that finds a array of bytes or a string in an buffer of bytes and returns an index. Similar to `Span.IndexOf` but works in environments where not available, and also supports searching for decoded strings.
+
+* **Fix: HtmlUtils.HtmlEncode()**  
+Handle encoding of single quotes `'` as well as double quotes. Also marked this method as obsolete (despite the PR fix :-)) since this is handled by `System.Net.WebUtility` class now (since .NET 4.0).
+
+* **Fix: ReflectionUtils.CallMethodExCom()**  
+Fix bug when traversing object hierarchy.
+
+* **Add .NET 4.8 to WindowsUtilities.GetDotnetVersion()**  
+Add support for .NET 4.8 and also fix an errant `Debug.Writeline()` in this method.
+
+### 3.0.24
+*February 28th, 2019*
+
+* **Fix: HtmlUtils.SanitizeHtml() for multi-line**  
+Fix SanitizeHtml() function to work across line breaks for a tag.
+
+* **XmlUtils.XmlString()**  
+Create an XML encode string for elements or attributes.
+
+* **FileUtils.DeleteFiles()**  
+Added routine that deletes files in a folder based on a path spec, optionally recursively.
+
+* **DebugUtils.GetCodeWithLineNumbers()**  
+Add method that creates lines with line numbers appended. Useful for displaying source code.
+
+* **StringUtils.Truncate()**  
+Added method that truncates a string if it exceeds a certain number of characters.
+
+### 3.0.20
+*September 6th, 2018*
+
+* **HtmlUtils.SanitizeHtml()**  
+RegEx based HTML sanitation that handles the most common script injection scenarios for `<script>`,`<iframe>`,`<form>` etc. tags, `javascript:` script embeds and `onXXX` DOM element event handlers.
+
+* **StringUtils.IndexOfNth() and .LastIndexOfNth()**  
+Helper that returns an index for the nTh occurrance of a matched character in string.
+
+* **ShellUtils.OpenInExplorer()**  
+Allows opening an Explorer Window for for a folder or file in a folder. (full framework only)
+
+* **ShellUtils.ExecuteProcess()**  
+Wrapper around Process.Start() that captures exceptions and handles a few common scenarios simply including execution with timeout and presetting the Window. (full framework only)
+
+* **ShellUtils.OpenTerminal()**  
+Opens a shell window using Powershell or Command Prompt in a given pre-selected folder. (full framework only)
+
+* **WindowsUtils.GetWindowsVersion() and GetDotnetVerision()**  
+Helpers that retrieve a display version string that can be used by an application to display the Windows and .NET version in a meaningful way.
 
 * **HttpClient.HttpVerb Property**  
 Added HttpVerb property directly to the HttpClient object. This replaces the previous approach that required `CreateHttpWebRequest()` followed by setting  `client.WebRequest.Method` explicit.
+
+* **LanguageUtils.IgnoreErrors()**   
+Helper functions that allows you to execute a block of code explicitly with a wrapped around try/catch block. Two version - one that returns true or false, one that allows the operation to return a result.
+
+* **ImageUtils.AdjustAspectRatio**   
+Image helper routine that crops an image according to a new aspect ratio from the center outward. Useful for creating uniform images in uploaded files for previews. Also optionally resizes the adjusted image to a fixed width or height.
 
 ### 3.0.10
 *January 9th, 2018*
